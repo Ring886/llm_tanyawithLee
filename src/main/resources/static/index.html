@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>智能问答</title>
+    <style>
+        body {
+          font-family: "Segoe UI", sans-serif;
+          background: linear-gradient(to right, #e0f7fa, #f1f8e9);
+          margin: 0;
+          padding: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        h2 {
+          margin-top: 30px;
+          color: #006064;
+        }
+
+        #chat {
+          width: 90%;
+          max-width: 700px;
+          height: 500px;
+          background: #ffffffcc;
+          border: 1px solid #b2dfdb;
+          border-radius: 10px;
+          padding: 15px;
+          margin-top: 20px;
+          overflow-y: auto;
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .msg {
+          display: flex;
+          margin: 10px 0;
+        }
+
+        .msg.ai {
+          justify-content: flex-start;
+        }
+
+        .msg.user {
+          justify-content: flex-end;
+          max-width: 100%;
+        }
+
+        .bubble {
+          padding: 10px 15px;
+          border-radius: 20px;
+          line-height: 1.4;
+          font-size: 15px;
+          box-shadow: 1px 2px 4px rgba(0,0,0,0.1);
+          max-width: 70%;  /* 控制气泡宽度，而不是限制整条消息 */
+          word-wrap: break-word;
+        }
+
+
+        .bubble.ai {
+          background-color: #e3f2fd;
+          color: #0d47a1;
+        }
+
+        .bubble.user {
+          background-color: #c8e6c9;
+          color: #1b5e20;
+        }
+
+        .input-area {
+          margin-top: 20px;
+          display: flex;
+          justify-content: center;
+          gap: 10px;
+          width: 90%;
+          max-width: 700px;
+        }
+
+        input[type="text"] {
+          flex-grow: 1;
+          padding: 12px;
+          border: 2px solid #80cbc4;
+          border-radius: 10px;
+          font-size: 16px;
+          transition: all 0.2s;
+          outline: none;
+        }
+
+        input[type="text"]:focus {
+          border-color: #26a69a;
+          background-color: #f0fdfc;
+        }
+
+        button {
+          padding: 12px 20px;
+          background-color: #00acc1;
+          color: white;
+          border: none;
+          border-radius: 10px;
+          font-size: 16px;
+          cursor: pointer;
+          transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+          background-color: #00838f;
+        }
+    </style>
+</head>
+<body>
+<h2>智能问答</h2>
+<div id="chat"></div>
+<div class="input-area">
+    <input type="text" id="question" placeholder="输入你的问题，按回车发送" />
+    <button onclick="send()">发送</button>
+</div>
+
+<script>
+    const chatDiv = document.getElementById("chat");
+
+    function append(msg, type) {
+      const msgDiv = document.createElement("div");
+      msgDiv.className = `msg ${type}`;
+      const bubble = document.createElement("div");
+      bubble.className = `bubble ${type}`;
+      bubble.textContent = msg;
+      msgDiv.appendChild(bubble);
+      chatDiv.appendChild(msgDiv);
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+    }
+
+    async function send() {
+      const input = document.getElementById("question");
+      const question = input.value.trim();
+      if (!question) return;
+      append("你：" + question, "user");
+      append("思考中……", "ai");
+      input.value = "";
+      try {
+        const res = await fetch("/chat/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+        const text = await res.text();
+        // 移除“思考中……”提示
+        const lastBubble = chatDiv.querySelector(".msg.ai:last-child");
+        if (lastBubble) chatDiv.removeChild(lastBubble);
+        append("AI：" + text, "ai");
+      } catch (e) {
+        append("AI：出错了，请稍后再试。", "ai");
+      }
+    }
+
+    // 支持回车发送
+    document.getElementById("question").addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        event.preventDefault(); // 防止默认行为
+        send();
+      }
+    });
+</script>
+</body>
+</html>
