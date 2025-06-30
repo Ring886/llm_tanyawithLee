@@ -53,7 +53,7 @@ public class Main {
                 .build();
         GenerationParam param = GenerationParam.builder()
                 .apiKey("sk-937378dfe8f04fc0925976e87638038f")
-                .model("deepseek-r1")
+                .model("qwen-turbo")
                 .messages(Arrays.asList(userMsg))
                 .resultFormat(GenerationParam.ResultFormat.MESSAGE)
                 .build();
