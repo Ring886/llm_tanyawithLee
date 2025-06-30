@@ -1,43 +1,4 @@
-//import jakarta.servlet.http.*;
-//import jakarta.servlet.*;
-//import java.io.*;
-//import rag.*;
-//
-//public class ChatHandler extends HttpServlet {
-//    private RagChat ragChat;
-//
-//    @Override
-//    public void init() {
-//        try {
-//            VectorStore store = new VectorStore();
-//            store.loadFromFile("src/main/resources/docs/faq.txt");
-//            this.ragChat = new RagChat(store);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
-//
-//    @Override
-//    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-//        BufferedReader reader = req.getReader();
-//        StringBuilder sb = new StringBuilder();
-//        String line;
-//        while ((line = reader.readLine()) != null) sb.append(line);
-//
-//        String question = sb.toString().replaceAll(".*\"question\"\\s*:\\s*\"(.*?)\".*", "$1");
-//
-//        resp.setContentType("text/plain; charset=UTF-8");
-//        try {
-//            String reply = ragChat.ask(question);
-//            resp.getWriter().write(reply);
-//        } catch (Exception e) {
-//            resp.getWriter().write("出错：" + e.getMessage());
-//        }
-//    }
-//}
-
-
-
+// src/main/java/rag/ChatHandler.java
 package rag;
 
 import jakarta.servlet.http.*;
@@ -47,30 +8,30 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 public class ChatHandler extends HttpServlet {
     private RagChat ragChat;
+    private ObjectMapper objectMapper;
 
     @Override
     public void init() {
+        this.objectMapper = new ObjectMapper();
         try {
-            InputStream in = getClass().getClassLoader().getResourceAsStream("docs/faq.txt");
-            if (in == null) {
-                throw new FileNotFoundException("找不到 docs/faq.txt 文件！");
-            }
-            List<String> lines = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))
-                    .lines().collect(Collectors.toList());
-
             VectorStore store = new VectorStore();
-            for (String line : lines) {
-                if (!line.trim().isEmpty()) {
-                    store.addEntry(line);
-                }
-            }
+
+            // *** 调用所有数据库表的加载方法 ***
+            store.loadMedicalArticles();
+            store.loadDoctors();
+            store.loadDrugs();
+            store.loadHospitalDepartments();
+            store.loadDoctorSchedules(); // 加载排班信息
 
             this.ragChat = new RagChat(store);
-            System.out.println("✅ RAG 初始化完成，知识条目加载数量: " + store.entries.size());
+            System.out.println("✅ RAG 系统初始化完成，所有知识条目加载成功。总条目数: " + store.entries.size());
         } catch (Exception e) {
-            System.err.println("❌ RAG 初始化失败");
+            System.err.println("❌ RAG 系统初始化失败");
             e.printStackTrace();
             this.ragChat = null;
         }
@@ -93,7 +54,7 @@ public class ChatHandler extends HttpServlet {
         String body = sb.toString();
         String question = extractQuestion(body);
 
-        if (question == null || question.isEmpty()) {
+        if (question == null || question == null || question.isEmpty()) { // 修复了重复的 null 检查
             resp.getWriter().write("出错：未提供问题字段");
             return;
         }
@@ -109,12 +70,14 @@ public class ChatHandler extends HttpServlet {
 
     private String extractQuestion(String json) {
         try {
-            int idx = json.indexOf("\"question\"");
-            if (idx == -1) return null;
-            int start = json.indexOf("\"", idx + 10) + 1;
-            int end = json.indexOf("\"", start);
-            return json.substring(start, end);
+            JsonNode rootNode = objectMapper.readTree(json);
+            if (rootNode.has("question")) {
+                return rootNode.get("question").asText();
+            }
+            return null;
         } catch (Exception e) {
+            System.err.println("解析JSON请求体失败: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }
