@@ -13,8 +13,10 @@ public class RagChat {
                 relevant + "\n\n问题：" + question;
 
         try {
-            return Main.callWithMessage(prompt)
-                    .getOutput().getChoices().get(0).getMessage().getContent();
+//            return Main.callWithMessage(prompt)
+//                    .getOutput().getChoices().get(0).getMessage().getContent();
+            return Main.streamCallWithMessage(question);
+
         } catch (Exception e) {
             e.printStackTrace();
             return "调用大模型服务时出错：" + e.getMessage();

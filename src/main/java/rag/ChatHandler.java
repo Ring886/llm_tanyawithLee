@@ -1,47 +1,6 @@
-//import jakarta.servlet.http.*;
-//import jakarta.servlet.*;
-//import java.io.*;
-//import rag.*;
-//
-//public class ChatHandler extends HttpServlet {
-//    private RagChat ragChat;
-//
-//    @Override
-//    public void init() {
-//        try {
-//            VectorStore store = new VectorStore();
-//            store.loadFromFile("src/main/resources/docs/faq.txt");
-//            this.ragChat = new RagChat(store);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
-//
-//    @Override
-//    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-//        BufferedReader reader = req.getReader();
-//        StringBuilder sb = new StringBuilder();
-//        String line;
-//        while ((line = reader.readLine()) != null) sb.append(line);
-//
-//        String question = sb.toString().replaceAll(".*\"question\"\\s*:\\s*\"(.*?)\".*", "$1");
-//
-//        resp.setContentType("text/plain; charset=UTF-8");
-//        try {
-//            String reply = ragChat.ask(question);
-//            resp.getWriter().write(reply);
-//        } catch (Exception e) {
-//            resp.getWriter().write("出错：" + e.getMessage());
-//        }
-//    }
-//}
-
-
-
 package rag;
 
 import jakarta.servlet.http.*;
-import jakarta.servlet.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.List;

@@ -137,7 +137,7 @@
       append("思考中……", "ai");
       input.value = "";
       try {
-        const res = await fetch("/chat/ask", {
+        const res = await fetch("/api/chat/ask", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ question })
