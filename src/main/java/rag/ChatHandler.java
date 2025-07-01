@@ -1,15 +1,10 @@
-// src/main/java/rag/ChatHandler.java
 package rag;
-
-import jakarta.servlet.http.*;
-import jakarta.servlet.*;
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.*;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 
 public class ChatHandler extends HttpServlet {
     private RagChat ragChat;
@@ -21,7 +16,7 @@ public class ChatHandler extends HttpServlet {
         try {
             VectorStore store = new VectorStore();
 
-            // *** 调用所有数据库表的加载方法 ***
+            // ✅ 加载数据库知识库内容
             store.loadMedicalArticles();
             store.loadDoctors();
             store.loadDrugs();
@@ -40,34 +35,44 @@ public class ChatHandler extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setContentType("text/plain; charset=UTF-8");
+        resp.setHeader("Cache-Control", "no-cache");
+        resp.setHeader("Connection", "keep-alive");
+        resp.setHeader("Access-Control-Allow-Origin", "*");
 
         if (ragChat == null) {
             resp.getWriter().write("出错：RAG 系统未正确初始化");
             return;
         }
 
-        BufferedReader reader = req.getReader();
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) sb.append(line);
+        // 读取 JSON 请求体
+        String body = new BufferedReader(new InputStreamReader(req.getInputStream(), StandardCharsets.UTF_8))
+                .lines()
+                .reduce("", (acc, line) -> acc + line);
 
-        String body = sb.toString();
         String question = extractQuestion(body);
 
-        if (question == null || question == null || question.isEmpty()) { // 修复了重复的 null 检查
+        if (question == null || question.isEmpty()) {
             resp.getWriter().write("出错：未提供问题字段");
             return;
         }
 
+        PrintWriter writer = resp.getWriter();
+
         try {
-            String reply = ragChat.ask(question);
-            resp.getWriter().write(reply);
+            // ✅ 调用流式回答方法
+            ragChat.streamAsk(question, delta -> {
+                writer.write(delta);
+                writer.flush(); // 实时刷新
+            });
         } catch (Exception e) {
             e.printStackTrace();
-            resp.getWriter().write("出错：" + e.getMessage());
+            writer.write("出错：" + e.getMessage());
+        } finally {
+            writer.close();
         }
     }
 
+    // ✅ 使用 Jackson 提取 JSON 字段，更安全可靠
     private String extractQuestion(String json) {
         try {
             JsonNode rootNode = objectMapper.readTree(json);
@@ -76,8 +81,7 @@ public class ChatHandler extends HttpServlet {
             }
             return null;
         } catch (Exception e) {
-            System.err.println("解析JSON请求体失败: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("解析JSON失败: " + e.getMessage());
             return null;
         }
     }

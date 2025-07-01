@@ -14,7 +14,7 @@ public class ChatServer {
         server.setHandler(handler);
 
         // 原有聊天接口
-        handler.addServlet(new ServletHolder(new ChatHandler()), "/chat/ask");
+        handler.addServlet(new ServletHolder(new ChatHandler()), "/api/chat/ask");
 
         // 注册登录接口
         handler.addServlet(new ServletHolder(new LoginHandler()), "/api/login");
