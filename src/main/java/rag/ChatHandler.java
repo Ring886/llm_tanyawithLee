@@ -35,15 +35,50 @@ public class ChatHandler extends HttpServlet {
         }
     }
 
+//    @Override
+//    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+//        resp.setContentType("text/plain; charset=UTF-8");
+//
+//        if (ragChat == null) {
+//            resp.getWriter().write("出错：RAG 系统未正确初始化");
+//            return;
+//        }
+//
+//        BufferedReader reader = req.getReader();
+//        StringBuilder sb = new StringBuilder();
+//        String line;
+//        while ((line = reader.readLine()) != null) sb.append(line);
+//
+//        String body = sb.toString();
+//        String question = extractQuestion(body);
+//
+//        if (question == null || question.isEmpty()) {
+//            resp.getWriter().write("出错：未提供问题字段");
+//            return;
+//        }
+//
+//        try {
+//            String reply = ragChat.ask(question);
+//            resp.getWriter().write(reply);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            resp.getWriter().write("出错：" + e.getMessage());
+//        }
+//    }
+
+
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setContentType("text/plain; charset=UTF-8");
+        resp.setHeader("Cache-Control", "no-cache");
+        resp.setHeader("Connection", "keep-alive");
 
         if (ragChat == null) {
             resp.getWriter().write("出错：RAG 系统未正确初始化");
             return;
         }
 
+        // 读取 JSON 请求体
         BufferedReader reader = req.getReader();
         StringBuilder sb = new StringBuilder();
         String line;
@@ -57,14 +92,24 @@ public class ChatHandler extends HttpServlet {
             return;
         }
 
+        PrintWriter writer = resp.getWriter();
+
         try {
-            String reply = ragChat.ask(question);
-            resp.getWriter().write(reply);
+            // ✅ 调用流式问答方法，边生成边写入响应
+            ragChat.streamAsk(question, delta -> {
+                writer.write(delta);
+                writer.flush(); // 必须flush，前端才能实时收到
+            });
         } catch (Exception e) {
             e.printStackTrace();
-            resp.getWriter().write("出错：" + e.getMessage());
+            writer.write("出错：" + e.getMessage());
+        } finally {
+            writer.close();
         }
     }
+
+
+
 
     private String extractQuestion(String json) {
         try {
