@@ -17,7 +17,6 @@ public class ChatHandler extends HttpServlet {
             VectorStore store = new VectorStore();
 
             // ✅ 加载数据库知识库内容
-            store.loadMedicalArticles();
             store.loadDoctors();
             store.loadDrugs();
             store.loadHospitalDepartments();
