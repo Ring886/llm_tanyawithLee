@@ -54,8 +54,9 @@ public class VectorStore {
                 String chunk = text.substring(i, endIndex);
 
                 // 如果是最后一个块，确保包含了文本的剩余部分
-                if (endIndex == text.length() && i + MAX_EMBEDDING_CHUNK_LENGTH - overlap > text.length()) {
-                    chunk = text.substring(i);
+                // 这里的逻辑可以优化，确保不会生成空块或过短的重复块
+                if (chunk.length() < MAX_EMBEDDING_CHUNK_LENGTH / 5 && i > 0) { // 如果块太短且不是第一个块，可能与前一个合并或忽略
+                    continue;
                 }
 
                 chunk = chunk.trim();
@@ -106,6 +107,7 @@ public class VectorStore {
                     } catch (SQLException e) {
                         // 列不存在或数据类型不匹配，记录警告但继续处理其他列
                         System.err.println("警告: 表 " + tableName + " 中获取列 '" + col + "' 失败或不存在: " + e.getMessage());
+                        // 考虑是否中断或更严格的错误处理
                     }
                 }
                 String fullText = textBuilder.toString().trim(); // 最终去除拼接后字符串的首尾空格
@@ -133,6 +135,15 @@ public class VectorStore {
         return count;
     }
 
+    /**
+     * 新增方法：加载 rag_knowledge 表中的数据
+     * 提取 title, category, content 作为知识进行向量化
+     */
+    public int loadRagKnowledge() throws SQLException, IOException, ClassNotFoundException {
+        String sql = "SELECT title, category, content FROM rag_knowledge";
+        // 拼接 title, category, content 作为要向量化的文本
+        return loadDataFromTable("rag_knowledge", sql, "title", "category", "content");
+    }
 
     // 2. 加载 doctors 表
     public int loadDoctors() throws SQLException, IOException, ClassNotFoundException {
@@ -192,7 +203,7 @@ public class VectorStore {
 
         double maxSim = -1.0;
         String bestMatch = "未能找到相关内容。"; // 默认回复
-        final double SIMILARITY_THRESHOLD = 0.75; // 相似度阈值，低于此值认为不相关
+        final double SIMILARITY_THRESHOLD = 0.1; // 相似度阈值，低于此值认为不相关
 
         // 如果entries为空，说明知识库没有加载成功或没有数据
         if (entries.isEmpty()) {

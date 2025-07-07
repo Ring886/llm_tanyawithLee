@@ -86,6 +86,7 @@ public class ChatSessionServlet extends HttpServlet {
                 // 直接调用本类中的方法
                 saveMessage(sessionId, "user", userContent);
 
+
                 // 2. 调用大模型获取回复并收集流式片段
                 StringBuilder aiReplyBuilder = new StringBuilder(); // 用于拼接所有流式片段
                 try {
@@ -98,6 +99,7 @@ public class ChatSessionServlet extends HttpServlet {
                     aiReplyBuilder.append("AI服务暂时不可用，请稍后再试。"); // 友好提示
                 }
                 String aiReplyContent = aiReplyBuilder.toString(); // 获取完整的AI回复
+
 
                 // 3. 保存AI回复
                 // 直接调用本类中的方法

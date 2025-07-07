@@ -21,6 +21,7 @@ public class ChatHandler extends HttpServlet {
             store.loadDrugs();
             store.loadHospitalDepartments();
             store.loadDoctorSchedules(); // 加载排班信息
+            store.loadRagKnowledge();
 
             this.ragChat = new RagChat(store);
             System.out.println("✅ RAG 系统初始化完成，所有知识条目加载成功。总条目数: " + store.entries.size());
