@@ -1,4 +1,3 @@
-// src/main/java/rag/ChatSessionServlet.java
 package rag;
 
 import jakarta.servlet.ServletException;
@@ -14,30 +13,30 @@ import java.io.PrintWriter;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID; // 用于生成 session_id
+import java.util.UUID; // Used to generate session_id
 import java.util.stream.Collectors;
 
-// 引入 Main 类中的 LLM 异常
-import com.alibaba.dashscope.exception.ApiException;
-import com.alibaba.dashscope.exception.InputRequiredException;
-import com.alibaba.dashscope.exception.NoApiKeyException;
+// Removed LLM-related imports, as this servlet will no longer call the LLM directly.
+// import com.alibaba.dashscope.exception.ApiException;
+// import com.alibaba.dashscope.exception.InputRequiredException;
+// import com.alibaba.dashscope.exception.NoApiKeyException;
 
 public class ChatSessionServlet extends HttpServlet {
 
     private Gson gson = new Gson();
-    // private SessionService sessionService = new SessionService(); // 不再需要独立的 SessionService 实例
+    // private SessionService sessionService = new SessionService(); // No longer needs a separate SessionService instance
 
-    // 数据库连接信息（请替换为你的实际信息）
+    // Database connection information (please replace with your actual information)
     private static final String DB_URL = "jdbc:mysql://localhost:3306/hospital?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC";
-    private static final String DB_USER = "root"; // 替换为你的数据库用户名
-    private static final String DB_PASSWORD = "root"; // 替换为你的数据库密码
+    private static final String DB_USER = "root"; // Replace with your database username
+    private static final String DB_PASSWORD = "root"; // Replace with your database password
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String servletPath = req.getServletPath(); // 获取Servlet的映射路径，如 "/api/chat/sessions" 或 "/api/chat/message"
-        String pathInfo = req.getPathInfo();      // 获取Servlet路径后的额外路径信息，如 "/new" 或 null
+        String servletPath = req.getServletPath(); // Get Servlet's mapping path, e.g., "/api/chat/sessions" or "/api/chat/message"
+        String pathInfo = req.getPathInfo();      // Get additional path information after Servlet path, e.g., "/new" or null
 
-        // === 调试打印：显示收到的请求路径信息 ===
+        // === Debug print: Show received request path information ===
         System.out.println("Debug: Received POST request for servletPath: " + servletPath + ", pathInfo: " + pathInfo);
 
         resp.setContentType("application/json");
@@ -48,15 +47,15 @@ public class ChatSessionServlet extends HttpServlet {
             String requestBody = req.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
             JsonObject jsonRequest = JsonParser.parseString(requestBody).getAsJsonObject();
 
-            // 根据 servletPath 和 pathInfo 判断具体的API
+            // Determine the specific API based on servletPath and pathInfo
             if ("/api/chat/sessions".equals(servletPath) && "/new".equals(pathInfo)) {
                 System.out.println("Debug: Handling /api/chat/sessions/new request.");
                 int userId = jsonRequest.get("user_id").getAsInt();
-                String initialMessage = jsonRequest.has("initial_message") ? jsonRequest.get("initial_message").getAsString() : "新对话";
-                String sessionTitle = initialMessage.isEmpty() ? "新对话" :
+                String initialMessage = jsonRequest.has("initial_message") ? jsonRequest.get("initial_message").getAsString() : "New conversation";
+                String sessionTitle = initialMessage.isEmpty() ? "New conversation" :
                         (initialMessage.length() > 20 ? initialMessage.substring(0, 20) + "..." : initialMessage);
 
-                // 直接调用本类中的方法
+                // Call method within this class directly
                 Session newSession = createNewSession(userId, sessionTitle);
                 if (newSession != null) {
                     if (!initialMessage.isEmpty()) {
@@ -69,46 +68,31 @@ public class ChatSessionServlet extends HttpServlet {
                     out.print("{\"message\": \"Failed to create new session\"}");
                 }
             } else if ("/api/chat/message".equals(servletPath) && pathInfo == null) {
-                // 当映射为 /api/chat/message 且请求URL精确匹配时，pathInfo 为 null
+                // When mapped as /api/chat/message and request URL exactly matches, pathInfo is null
                 System.out.println("Debug: Handling /api/chat/message request.");
                 String sessionId = jsonRequest.get("session_id").getAsString();
                 int userId = jsonRequest.get("user_id").getAsInt();
                 String userContent = jsonRequest.get("content").getAsString();
 
-                // 直接调用本类中的方法
+                // Call method within this class directly
                 if (!isValidSessionAndUser(sessionId, userId)) {
                     resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     out.print("{\"message\": \"Forbidden: Invalid session or user ID\"}");
                     return;
                 }
 
-                // 1. 保存用户消息
-                // 直接调用本类中的方法
-                saveMessage(sessionId, "user", userContent);
+                // 1. Save user message
+                // Call method within this class directly
+                int userMessageId = saveMessage(sessionId, "user", userContent);
 
+                // 2. Removed LLM call logic from here.
+                // This servlet now only saves the message, it does NOT interact with the LLM.
+                // The LLM interaction (Agent logic) should happen via ChatHandler.
 
-                // 2. 调用大模型获取回复并收集流式片段
-                StringBuilder aiReplyBuilder = new StringBuilder(); // 用于拼接所有流式片段
-                try {
-                    Main.streamCallWithHandler(userContent, delta -> {
-                        aiReplyBuilder.append(delta); // 收集每个片段
-                    });
-                } catch (NoApiKeyException | ApiException | InputRequiredException e) {
-                    System.err.println("Error calling LLM: " + e.getMessage());
-                    e.printStackTrace();
-                    aiReplyBuilder.append("AI服务暂时不可用，请稍后再试。"); // 友好提示
-                }
-                String aiReplyContent = aiReplyBuilder.toString(); // 获取完整的AI回复
-
-
-                // 3. 保存AI回复
-                // 直接调用本类中的方法
-                int aiMessageId = saveMessage(sessionId, "assistant", aiReplyContent);
-
-                // 4. 返回AI回复及相关信息
+                // 3. Return confirmation that message was saved
                 JsonObject responseJson = new JsonObject();
-                responseJson.addProperty("ai_reply", aiReplyContent);
-                responseJson.addProperty("message_id", aiMessageId);
+                responseJson.addProperty("message", "User message saved successfully.");
+                responseJson.addProperty("message_id", userMessageId);
                 responseJson.addProperty("timestamp", new java.util.Date().toInstant().toString());
                 out.print(gson.toJson(responseJson));
                 resp.setStatus(HttpServletResponse.SC_OK);
@@ -137,7 +121,7 @@ public class ChatSessionServlet extends HttpServlet {
         PrintWriter out = resp.getWriter();
 
         try {
-            // 获取所有会话列表 /api/chat/sessions?user_id=...
+            // Get all sessions list /api/chat/sessions?user_id=...
             if ("/api/chat/sessions".equals(servletPath) && (pathInfo == null || "/".equals(pathInfo))) {
                 System.out.println("Debug: Handling /api/chat/sessions (GET) request.");
                 String userIdParam = req.getParameter("user_id");
@@ -147,12 +131,12 @@ public class ChatSessionServlet extends HttpServlet {
                     return;
                 }
                 int userId = Integer.parseInt(userIdParam);
-                // 直接调用本类中的方法
+                // Call method within this class directly
                 List<Session> sessions = getSessionsByUserId(userId);
                 out.print(gson.toJson(sessions));
                 resp.setStatus(HttpServletResponse.SC_OK);
             }
-            // 获取特定会话的消息 /api/chat/sessions/{session_id}/messages?user_id=...
+            // Get messages for a specific session /api/chat/sessions/{session_id}/messages?user_id=...
             else if ("/api/chat/sessions".equals(servletPath) && pathInfo != null && pathInfo.endsWith("/messages")) {
                 System.out.println("Debug: Handling /api/chat/sessions/{id}/messages (GET) request.");
                 String[] pathParts = pathInfo.split("/");
@@ -169,14 +153,14 @@ public class ChatSessionServlet extends HttpServlet {
                     }
                     int userId = Integer.parseInt(userIdParam);
 
-                    // 直接调用本类中的方法
+                    // Call method within this class directly
                     if (!isValidSessionAndUser(sessionId, userId)) {
                         resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
                         out.print("{\"message\": \"Forbidden: Invalid session or user ID for messages\"}");
                         return;
                     }
 
-                    // 直接调用本类中的方法
+                    // Call method within this class directly
                     List<Message> messages = getMessagesBySessionId(sessionId);
                     out.print(gson.toJson(messages));
                     resp.setStatus(HttpServletResponse.SC_OK);
@@ -202,12 +186,12 @@ public class ChatSessionServlet extends HttpServlet {
         }
     }
 
-    // --- 以下是直接集成到 Servlet 内部的数据库访问逻辑 (原 SessionService 中的方法) ---
+    // --- Below are database access logic directly integrated into the Servlet (originally from SessionService) ---
 
-    // 获取数据库连接
+    // Get database connection
     private Connection getConnection() throws SQLException {
         try {
-            Class.forName("com.mysql.cj.jdbc.Driver"); // 加载MySQL驱动
+            Class.forName("com.mysql.cj.jdbc.Driver"); // Load MySQL driver
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
             throw new SQLException("MySQL JDBC Driver not found. Please add mysql-connector-java to your classpath.");
@@ -215,14 +199,14 @@ public class ChatSessionServlet extends HttpServlet {
         return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
     }
 
-    // --- 数据模型类 (POJO)，严格对应数据库字段 ---
-    // 这些类将用于在Java代码中表示数据库行
+    // --- Data Model Classes (POJO), strictly corresponding to database fields ---
+    // These classes will be used to represent database rows in Java code
     public static class Session {
         public String sessionId;
         public int userId;
         public String title;
-        public Timestamp createdAt; // 对应 dialog_sessions 表的 created_at
-        public Timestamp updatedAt; // 对应 dialog_sessions 表的 updated_at
+        public Timestamp createdAt; // Corresponds to created_at in dialog_sessions table
+        public Timestamp updatedAt; // Corresponds to updated_at in dialog_sessions table
 
         public Session(String sessionId, int userId, String title, Timestamp createdAt, Timestamp updatedAt) {
             this.sessionId = sessionId;
@@ -251,16 +235,16 @@ public class ChatSessionServlet extends HttpServlet {
         }
     }
 
-    // --- 会话相关操作 ---
+    // --- Session related operations ---
 
     /**
-     * 创建一个新会话并保存到数据库。
-     * @param userId 用户ID
-     * @param initialTitle 会话的初始标题
-     * @return 新创建的会话对象，如果失败返回null
+     * Create a new session and save it to the database.
+     * @param userId User ID
+     * @param initialTitle Initial title of the session
+     * @return The newly created session object, null if failed
      */
     private Session createNewSession(int userId, String initialTitle) {
-        String sessionId = UUID.randomUUID().toString(); // 生成唯一Session ID
+        String sessionId = UUID.randomUUID().toString(); // Generate unique Session ID
         String sql = "INSERT INTO dialog_sessions (session_id, user_id, title) VALUES (?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -269,9 +253,9 @@ public class ChatSessionServlet extends HttpServlet {
             pstmt.setString(3, initialTitle);
             int affectedRows = pstmt.executeUpdate();
             if (affectedRows > 0) {
-                // 返回完整的Session对象，包括数据库自动生成的 created_at 和 updated_at
-                // 这里需要重新查询一次来获取完整的时间戳，或者假设默认行为
-                // 为了简化，这里直接返回一个包含当前时间的Session对象
+                // Return a complete Session object, including auto-generated created_at and updated_at from the database
+                // Here, you might need to query again to get the full timestamps, or assume default behavior
+                // For simplification, here we directly return a Session object with current timestamps
                 return new Session(sessionId, userId, initialTitle, new Timestamp(System.currentTimeMillis()), new Timestamp(System.currentTimeMillis()));
             }
         } catch (SQLException e) {
@@ -282,9 +266,9 @@ public class ChatSessionServlet extends HttpServlet {
     }
 
     /**
-     * 获取指定用户的所有会话列表。
-     * @param userId 用户ID
-     * @return 会话列表，按更新时间降序排列
+     * Get a list of all sessions for a specified user.
+     * @param userId User ID
+     * @return List of sessions, ordered by updated_at in descending order
      */
     private List<Session> getSessionsByUserId(int userId) {
         List<Session> sessions = new ArrayList<>();
@@ -311,10 +295,10 @@ public class ChatSessionServlet extends HttpServlet {
     }
 
     /**
-     * 验证会话ID和用户ID是否匹配，用于权限校验。
-     * @param sessionId 会话ID
-     * @param userId 用户ID
-     * @return 如果会话存在且属于该用户，返回true；否则返回false
+     * Validate if session ID and user ID match, for permission checking.
+     * @param sessionId Session ID
+     * @param userId User ID
+     * @return True if session exists and belongs to the user; otherwise, false
      */
     private boolean isValidSessionAndUser(String sessionId, int userId) {
         String sql = "SELECT COUNT(*) FROM dialog_sessions WHERE session_id = ? AND user_id = ?";
@@ -334,12 +318,12 @@ public class ChatSessionServlet extends HttpServlet {
         return false;
     }
 
-    // --- 消息相关操作 ---
+    // --- Message related operations ---
 
     /**
-     * 获取某个会话的所有消息。
-     * @param sessionId 会话ID
-     * @return 消息列表，按 message_index 升序排列
+     * Get all messages for a given session.
+     * @param sessionId Session ID
+     * @return List of messages, ordered by message_index in ascending order
      */
     private List<Message> getMessagesBySessionId(String sessionId) {
         List<Message> messages = new ArrayList<>();
@@ -367,33 +351,33 @@ public class ChatSessionServlet extends HttpServlet {
     }
 
     /**
-     * 保存一条消息到数据库，并更新对应会话的 updated_at 时间。
-     * 这是一个事务性操作，确保消息和会话更新的原子性。
-     * @param sessionId 消息所属的会话ID
-     * @param role 消息角色 ('user' 或 'assistant')
-     * @param content 消息内容
-     * @return 新插入消息的ID，如果失败返回-1
+     * Save a message to the database and update the updated_at time of the corresponding session.
+     * This is a transactional operation to ensure atomicity of message and session updates.
+     * @param sessionId Session ID of the message
+     * @param role Message role ('user' or 'assistant')
+     * @param content Message content
+     * @return ID of the newly inserted message, -1 if failed
      */
     private int saveMessage(String sessionId, String role, String content) {
         int messageId = -1;
         Connection conn = null;
         try {
             conn = getConnection();
-            conn.setAutoCommit(false); // 开启事务，确保操作原子性
+            conn.setAutoCommit(false); // Start transaction to ensure atomicity of operations
 
-            // 1. 获取当前 session 的最大 message_index，用于新消息的排序
+            // 1. Get the maximum message_index for the current session, for sorting new messages
             String getMaxIndexSql = "SELECT COALESCE(MAX(message_index), 0) FROM dialog_messages WHERE session_id = ?";
             int nextMessageIndex = 0;
             try (PreparedStatement pstmt = conn.prepareStatement(getMaxIndexSql)) {
                 pstmt.setString(1, sessionId);
                 try (ResultSet rs = pstmt.executeQuery()) {
                     if (rs.next()) {
-                        nextMessageIndex = rs.getInt(1) + 1; // 新消息的 index
+                        nextMessageIndex = rs.getInt(1) + 1; // Index for the new message
                     }
                 }
             }
 
-            // 2. 插入新消息到 dialog_messages 表
+            // 2. Insert new message into dialog_messages table
             String insertMessageSql = "INSERT INTO dialog_messages (session_id, message_index, role, content) VALUES (?, ?, ?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(insertMessageSql, Statement.RETURN_GENERATED_KEYS)) {
                 pstmt.setString(1, sessionId);
@@ -402,7 +386,7 @@ public class ChatSessionServlet extends HttpServlet {
                 pstmt.setString(4, content);
                 pstmt.executeUpdate();
 
-                // 获取新插入消息的自增ID
+                // Get the auto-generated ID of the newly inserted message
                 try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
                         messageId = generatedKeys.getInt(1);
@@ -410,19 +394,19 @@ public class ChatSessionServlet extends HttpServlet {
                 }
             }
 
-            // 3. 更新对应会话的 updated_at 时间，使其在会话列表中排到前面
+            // 3. Update the updated_at time of the corresponding session, so it appears at the top of the session list
             String updateSessionSql = "UPDATE dialog_sessions SET updated_at = CURRENT_TIMESTAMP WHERE session_id = ?";
             try (PreparedStatement pstmt = conn.prepareStatement(updateSessionSql)) {
                 pstmt.setString(1, sessionId);
                 pstmt.executeUpdate();
             }
 
-            conn.commit(); // 提交事务
+            conn.commit(); // Commit transaction
         } catch (SQLException e) {
             System.err.println("Error saving message and updating session: " + e.getMessage());
             if (conn != null) {
                 try {
-                    conn.rollback(); // 发生异常时回滚事务
+                    conn.rollback(); // Rollback transaction on exception
                 } catch (SQLException ex) {
                     System.err.println("Error rolling back transaction: " + ex.getMessage());
                     ex.printStackTrace();
@@ -432,8 +416,8 @@ public class ChatSessionServlet extends HttpServlet {
         } finally {
             if (conn != null) {
                 try {
-                    conn.setAutoCommit(true); // 恢复自动提交模式
-                    conn.close(); // 关闭连接
+                    conn.setAutoCommit(true); // Restore auto-commit mode
+                    conn.close(); // Close connection
                 } catch (SQLException e) {
                     System.err.println("Error closing connection: " + e.getMessage());
                     e.printStackTrace();
