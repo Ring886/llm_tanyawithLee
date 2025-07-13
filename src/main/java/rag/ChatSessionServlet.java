@@ -24,7 +24,7 @@ public class ChatSessionServlet extends HttpServlet {
     // 数据库连接信息（请替换为您的实际信息）
     private static final String DB_URL = "jdbc:mysql://localhost:3306/hospital?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC";
     private static final String DB_USER = "root"; // 您的数据库用户名
-    private static final String DB_PASSWORD = "root"; // 您的数据库密码
+    private static final String DB_PASSWORD = "200402135734"; // 您的数据库密码
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {

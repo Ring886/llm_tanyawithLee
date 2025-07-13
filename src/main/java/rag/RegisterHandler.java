@@ -15,7 +15,7 @@ import java.sql.SQLException;
 public class RegisterHandler extends HttpServlet {
     private static final String JDBC_URL = "jdbc:mysql://localhost:3306/hospital?useSSL=false&serverTimezone=UTC";
     private static final String JDBC_USER = "root";
-    private static final String JDBC_PASSWORD = "root";
+    private static final String JDBC_PASSWORD = "200402135734";
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {

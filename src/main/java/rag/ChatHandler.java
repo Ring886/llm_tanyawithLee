@@ -18,7 +18,7 @@ public class ChatHandler extends HttpServlet {
     // Database connection constants, for all internal tool classes to use
     private static final String DB_URL = "jdbc:mysql://localhost:3306/hospital?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC";
     private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "root";
+    private static final String DB_PASSWORD = "200402135734";
     private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
 
     private VectorStore vectorStore; // Knowledge base for RAG

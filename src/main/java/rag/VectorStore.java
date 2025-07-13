@@ -15,7 +15,7 @@ public class VectorStore {
     // 确保你的数据库名是 'hospital' 或者你实际使用的数据库名
     private static final String DB_URL = "jdbc:mysql://localhost:3306/hospital?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC";
     private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "root";
+    private static final String DB_PASSWORD = "200402135734";
     private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver"; // MySQL 8.0+
 
     // 嵌入模型输入长度限制的阈值 (假设值，请根据您实际使用的模型调整)
