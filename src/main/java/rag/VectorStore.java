@@ -203,7 +203,7 @@ public class VectorStore {
 
         double maxSim = -1.0;
         String bestMatch = "未能找到相关内容。"; // 默认回复
-        final double SIMILARITY_THRESHOLD = 0.1; // 相似度阈值，低于此值认为不相关
+        final double SIMILARITY_THRESHOLD = 0.5; // 相似度阈值，低于此值认为不相关
 
         // 如果entries为空，说明知识库没有加载成功或没有数据
         if (entries.isEmpty()) {

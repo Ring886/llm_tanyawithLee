@@ -62,9 +62,9 @@ public class ChatSessionServlet extends HttpServlet {
                 Session newSession = createNewSession(userId, sessionTitle);
                 if (newSession != null) {
                     // 如果提供了初始消息，则将其作为用户消息保存到新创建的会话中
-                    if (!initialMessage.isEmpty()) {
-                        saveMessage(newSession.sessionId, "user", initialMessage);
-                    }
+//                    if (!initialMessage.isEmpty()) {
+//                        saveMessage(newSession.sessionId, "user", initialMessage);
+//                    }
                     // 将新会话对象转换成 JSON 格式并发送回客户端
                     out.print(gson.toJson(newSession));
                     resp.setStatus(HttpServletResponse.SC_OK); // 设置 HTTP 状态码为 200 OK

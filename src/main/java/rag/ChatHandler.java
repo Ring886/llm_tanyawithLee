@@ -518,7 +518,10 @@ public class ChatHandler extends HttpServlet {
                 StringBuilder sqlBuilder = new StringBuilder("SELECT name, department, title, specialty, gender, bio FROM doctors WHERE 1=1");
                 if (name != null && !name.isEmpty()) sqlBuilder.append(" AND name LIKE ?");
                 if (department != null && !department.isEmpty()) sqlBuilder.append(" AND department LIKE ?");
-                if (specialty != null && !specialty.isEmpty()) sqlBuilder.append(" AND specialty LIKE ?");
+                // START OF MODIFICATION
+                // 如果 specialty 参数存在，则同时在 specialty 和 bio 字段中进行模糊匹配
+                if (specialty != null && !specialty.isEmpty()) sqlBuilder.append(" AND (specialty LIKE ? OR bio LIKE ?)");
+                // END OF MODIFICATION
 
                 try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD); // Use ChatHandler's constant
                      PreparedStatement pstmt = conn.prepareStatement(sqlBuilder.toString())) {
@@ -526,7 +529,13 @@ public class ChatHandler extends HttpServlet {
                     int paramIndex = 1;
                     if (name != null && !name.isEmpty()) pstmt.setString(paramIndex++, "%" + name + "%");
                     if (department != null && !department.isEmpty()) pstmt.setString(paramIndex++, "%" + department + "%");
-                    if (specialty != null && !specialty.isEmpty()) pstmt.setString(paramIndex++, "%" + specialty + "%");
+                    // START OF MODIFICATION
+                    // 如果 specialty 参数存在，需要为两个占位符设置相同的值
+                    if (specialty != null && !specialty.isEmpty()) {
+                        pstmt.setString(paramIndex++, "%" + specialty + "%");
+                        pstmt.setString(paramIndex++, "%" + specialty + "%");
+                    }
+                    // END OF MODIFICATION
 
                     ResultSet rs = pstmt.executeQuery();
                     StringBuilder result = new StringBuilder("Query results:\n");
@@ -549,6 +558,7 @@ public class ChatHandler extends HttpServlet {
             }
         }
     }
+
 
     // --- Drug Information Query Tool (作为 ChatHandler 的静态嵌套类) ---
     public static class DrugInfoTool implements Tool {

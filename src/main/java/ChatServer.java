@@ -70,6 +70,10 @@ public class ChatServer {
         context.addServlet(new ServletHolder(new RegisterHandler()), "/api/register");
         System.out.println("注册接口映射到: /api/register");
 
+        //药品管理接口
+        context.addServlet(new ServletHolder(new DrugManagementServlet()), "/api/drugs");
+        System.out.println("注册接口映射到: /api/drugs");
+
         // ** 修改：注册 ChatSessionServlet **
         // ChatSessionServlet 现在仅用于处理聊天会话的创建、列表查询和消息历史记录的查询。
         // 它不再负责处理用户消息并调用 LLM 获取回复。
