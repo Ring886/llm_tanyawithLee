@@ -10,7 +10,7 @@ public class LoginHandler extends HttpServlet {
 
     private static final String DB_URL = "jdbc:mysql://localhost:3306/hospital?useSSL=false&serverTimezone=UTC";
     private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "200402135734";
+    private static final String DB_PASSWORD = "root";
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {

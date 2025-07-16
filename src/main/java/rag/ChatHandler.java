@@ -23,7 +23,7 @@ public class ChatHandler extends HttpServlet {
     // 数据库连接常量，供所有内部工具类和本 Servlet 使用
     private static final String DB_URL = "jdbc:mysql://localhost:3306/hospital?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8";
     private static final String DB_USER = "root"; // 您的数据库用户名
-    private static final String DB_PASSWORD = "200402135734"; // 您的数据库密码
+    private static final String DB_PASSWORD = "root"; // 您的数据库密码
     private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
 
     private VectorStore vectorStore; // 用于RAG的知识库
@@ -512,43 +512,63 @@ public class ChatHandler extends HttpServlet {
             try {
                 JsonNode params = objectMapper.readTree(parametersJson);
                 String name = params.has("name") ? params.get("name").asText() : null;
-                String department = params.has("department") ? params.get("department").asText() : null;
+                String departmentName = params.has("department") ? params.get("department").asText() : null; // Changed variable name to avoid confusion with ID
                 String specialty = params.has("specialty") ? params.get("specialty").asText() : null;
 
-                StringBuilder sqlBuilder = new StringBuilder("SELECT name, department, title, specialty, gender, bio FROM doctors WHERE 1=1");
-                if (name != null && !name.isEmpty()) sqlBuilder.append(" AND name LIKE ?");
-                if (department != null && !department.isEmpty()) sqlBuilder.append(" AND department LIKE ?");
-                if (specialty != null && !specialty.isEmpty()) sqlBuilder.append(" AND specialty LIKE ?");
+                StringBuilder sqlBuilder = new StringBuilder();
+                sqlBuilder.append("SELECT d.name, hd.name AS department_name, d.title, d.specialty, d.gender, d.bio ");
+                sqlBuilder.append("FROM doctors d ");
+                sqlBuilder.append("JOIN hospital_departments hd ON d.department = hd.id "); // JOIN with hospital_departments
+                sqlBuilder.append("WHERE 1=1");
 
-                try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD); // Use ChatHandler's constant
+                List<String> queryParams = new ArrayList<>(); // To store parameters for PreparedStatement
+
+                if (name != null && !name.isEmpty()) {
+                    sqlBuilder.append(" AND d.name LIKE ?");
+                    queryParams.add("%" + name + "%");
+                }
+                // START OF MODIFICATION for department name lookup
+                if (departmentName != null && !departmentName.isEmpty()) {
+                    sqlBuilder.append(" AND hd.name LIKE ?"); // Search by department name in hospital_departments table
+                    queryParams.add("%" + departmentName + "%");
+                }
+                // END OF MODIFICATION
+                if (specialty != null && !specialty.isEmpty()) {
+                    sqlBuilder.append(" AND (d.specialty LIKE ? OR d.bio LIKE ?)"); // Search in doctors.specialty or doctors.bio
+                    queryParams.add("%" + specialty + "%");
+                    queryParams.add("%" + specialty + "%");
+                }
+
+                try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
                      PreparedStatement pstmt = conn.prepareStatement(sqlBuilder.toString())) {
 
-                    int paramIndex = 1;
-                    if (name != null && !name.isEmpty()) pstmt.setString(paramIndex++, "%" + name + "%");
-                    if (department != null && !department.isEmpty()) pstmt.setString(paramIndex++, "%" + department + "%");
-                    if (specialty != null && !specialty.isEmpty()) pstmt.setString(paramIndex++, "%" + specialty + "%");
+                    for (int i = 0; i < queryParams.size(); i++) {
+                        pstmt.setString(i + 1, queryParams.get(i));
+                    }
 
                     ResultSet rs = pstmt.executeQuery();
-                    StringBuilder result = new StringBuilder("Query results:\n");
+                    StringBuilder result = new StringBuilder("查询结果:\n");
                     boolean found = false;
                     while (rs.next()) {
                         found = true;
-                        result.append("Doctor Name: ").append(rs.getString("name"))
-                                .append(", Department: ").append(rs.getString("department"))
-                                .append(", Title: ").append(rs.getString("title"))
-                                .append(", Specialty: ").append(rs.getString("specialty"))
-                                .append(", Gender: ").append(rs.getString("gender"))
-                                .append(", Bio: ").append(rs.getString("bio")).append("\n");
+                        result.append("--- 医生信息 ---\n")
+                                .append("姓名: ").append(rs.getString("name")).append("\n")
+                                .append("科室: ").append(rs.getString("department_name")).append("\n") // Use the aliased name
+                                .append("职称: ").append(rs.getString("title")).append("\n")
+                                .append("专长: ").append(rs.getString("specialty")).append("\n")
+                                .append("性别: ").append(rs.getString("gender")).append("\n")
+                                .append("简介: ").append(rs.getString("bio")).append("\n");
                     }
-                    return found ? result.toString() : "No matching doctor information found.";
+                    return found ? result.toString() : "未找到匹配的医生信息。";
                 }
             } catch (Exception e) {
                 System.err.println("Failed to execute 'get_doctor_info' tool: " + e.getMessage());
                 e.printStackTrace();
-                return "Failed to execute 'get_doctor_info' tool, please try again later.";
+                return "执行 'get_doctor_info' 工具失败，请稍后再试。";
             }
         }
     }
+
 
     // --- Drug Information Query Tool (作为 ChatHandler 的静态嵌套类) ---
     public static class DrugInfoTool implements Tool {
