@@ -23,7 +23,7 @@ public class ChatHandler extends HttpServlet {
     // 数据库连接常量，供所有内部工具类和本 Servlet 使用
     private static final String DB_URL = "jdbc:mysql://localhost:3306/hospital?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8";
     private static final String DB_USER = "root"; // 您的数据库用户名
-    private static final String DB_PASSWORD = "root"; // 您的数据库密码
+    private static final String DB_PASSWORD = "200402135734"; // 您的数据库密码
     private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
 
     private VectorStore vectorStore; // 用于RAG的知识库
